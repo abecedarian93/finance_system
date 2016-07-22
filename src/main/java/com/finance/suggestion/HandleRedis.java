@@ -10,13 +10,11 @@ public class HandleRedis {
     private static Jedis jedis = SedisUtil.jedis;
 
     public static void main(String[] args) {
-        for (String key : jedis.keys("code=*")) {
-            String code = key.startsWith("code=") ? key.substring(5) : "";
-            String value = jedis.get(key);
-            HandleStock.handleCode(code);
-            System.out.println(code);
-        }
+        for (String key : jedis.keys("history_*")) {
 
+            System.out.println(key + "\t" + jedis.get(key));
+            HandleStock.handleHistory(key, jedis.get(key));
+        }
 
         jedis.close();
     }
