@@ -1,1 +1,16 @@
 # Created by .ignore support plugin (hsz.mobi)
+# maven ignore
+target/
+
+# idea ignore
+.idea/
+*.ipr
+*.iml
+*.iws
+
+# temp ignore
+*.log
+*.cache
+*.diff
+*.patch
+*.tmp
