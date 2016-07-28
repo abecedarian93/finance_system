@@ -2,58 +2,71 @@ package com.finance.suggestion;
 
 import com.finance.util.FileUtil;
 import com.finance.util.SedisUtil;
+import com.finance.util.TimeUtil;
 import redis.clients.jedis.Jedis;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by tianle.li on 2016/7/21.
  */
 public class HandleRedis {
-    private final static String Separator = "\t";
+    private static final String Separator = "\t";
     private static Jedis jedis = SedisUtil.jedis;
-
-    public HandleRedis() {
-
-    }
+    private static Map<String, String> codeMap = new HashMap<String, String>();
+    private static Set<String> codeSet = new HashSet<String>();
+    private static String stockCode = null;
 
     public static void main(String[] args) throws IOException {
-        BufferedWriter bw = createWriteBw("test");
+        BufferedWriter bw = FileUtil.createWriteBw("test");
         for (String key : jedis.keys("history_*")) {
-            System.out.println(key + "\t" + jedis.get(key));
-            handleHistory(key, jedis.get(key), bw);
+            handleToSet(key, jedis.get(key));
         }
+        handleHistory(bw);
         jedis.close();
         bw.close();
     }
 
-    private static BufferedWriter createWriteBw(String fileName) {
-        String filePath = FileUtil.filePath() + File.separator + fileName + ".txt";
-        BufferedWriter bw = null;
-        try {
-            File file = new File(filePath);
-            if (!file.exists()) {
-                file.createNewFile();
-                file.setExecutable(true, false);
-                file.setReadable(true, false);
-                file.setWritable(true, false);
-            }
-            FileWriter fw = new FileWriter(file.getAbsoluteFile());
-            bw = new BufferedWriter(fw);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return bw;
-    }
-
-    private static void handleHistory(String key, String value, BufferedWriter bw) throws IOException {
+    private static void handleToSet(String key, String value) {
         String[] arr = key.split("_");
         String date = arr[1];
         String code = arr[2];
-        bw.write(date + Separator + code + Separator + value);
-        bw.newLine();
+        if (stockCode == null) {
+            stockCode = code;
+        }
+        codeMap.put(date + Separator + code, value);
+        codeSet.add(date + Separator + code + Separator + value);
+    }
+
+
+    private static void handleHistory(BufferedWriter bw) throws IOException {
+        String today = TimeUtil.getTodayStr("yyyy-MM-dd");
+        boolean isEnd = false;
+        int count = 0, total = 0;
+        while (!isEnd) {
+            String[] dateArr = today.split("-");
+            int year = Integer.parseInt(dateArr[0]);
+            int month = Integer.parseInt(dateArr[1]);
+            int day = Integer.parseInt(dateArr[2]);
+            String preToday = TimeUtil.getNowOfLastYear(year, month, day, "yyyy-MM-dd");
+            if (codeMap.containsKey(preToday + Separator + stockCode)) {
+                String value = codeMap.get(preToday + Separator + stockCode);
+                int valueInt = Integer.parseInt(value);
+                count++;
+                total += valueInt;
+                bw.write(stockCode + Separator + preToday + Separator + total / count);
+            } else {
+                isEnd = true;
+            }
+
+        }
+
     }
 }
